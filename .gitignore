@@ -1,0 +1,14 @@
+# Environment & dependencies
+__pycache__/
+*.pyc
+venv/
+.env
+
+# User profiles and cache (contains personal logins and sessions)
+profiles/
+_temp_antireup/
+_done/
+
+# Local state
+config.json
+history.json
