@@ -9,11 +9,16 @@ from video_processor import anti_reup_process, cleanup_temp_anti_reup
 from history_manager import add_history_record
 
 STEALTH_JS = """
+// Ẩn hoàn toàn dấu vết tự động hóa
 Object.defineProperty(navigator, 'webdriver', {
     get: () => undefined
 });
 Object.defineProperty(navigator, 'plugins', {
-    get: () => [1, 2, 3, 4, 5]
+    get: () => [
+        { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer' },
+        { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai' },
+        { name: 'Native Client', filename: 'internal-nacl-plugin' }
+    ]
 });
 Object.defineProperty(navigator, 'languages', {
     get: () => ['vi-VN', 'vi', 'en-US', 'en']
@@ -24,6 +29,12 @@ window.chrome = {
     csi: function() {},
     app: {}
 };
+const originalQuery = window.navigator.permissions.query;
+window.navigator.permissions.query = (parameters) => (
+    parameters.name === 'notifications' ?
+        Promise.resolve({ state: Notification.permission }) :
+        originalQuery(parameters)
+);
 """
 
 def sanitize_caption(text):
@@ -66,6 +77,35 @@ class TikTokUploader:
     def log(self, message, level="INFO"):
         prefix = f"[{time.strftime('%H:%M:%S')}] [{level}] "
         self.log_cb(prefix + message)
+
+    def check_login_status(self, account_name, proxy_str=None):
+        """Kiểm tra nhanh xem tài khoản còn phiên đăng nhập hợp lệ không."""
+        profile_path = get_profile_path(account_name)
+        if not os.path.exists(profile_path):
+            return False, "Chưa tạo Profile"
+
+        playwright_proxy = parse_proxy(proxy_str)
+        try:
+            with sync_playwright() as p:
+                context = p.chromium.launch_persistent_context(
+                    user_data_dir=profile_path,
+                    proxy=playwright_proxy,
+                    headless=True,
+                    args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
+                    locale="vi-VN"
+                )
+                page = context.pages[0] if context.pages else context.new_page()
+                page.add_init_script(STEALTH_JS)
+                page.goto("https://www.tiktok.com/tiktokstudio/upload", timeout=30000)
+                page.wait_for_load_state("domcontentloaded")
+                time.sleep(2)
+                url = page.url.lower()
+                context.close()
+                if "login" in url:
+                    return False, "Hết phiên / Chưa đăng nhập"
+                return True, "Đang đăng nhập (Sống 100%)"
+        except Exception as e:
+            return False, f"Lỗi kiểm tra: {str(e)[:40]}"
 
     def launch_login_browser(self, account_name, proxy_str=None):
         """Mở trình duyệt Chrome với profile và proxy riêng để đăng nhập nick TikTok."""
@@ -113,7 +153,7 @@ class TikTokUploader:
                 return False
 
     def dismiss_popups(self, page, target_scope):
-        """Tự động đóng các popup của TikTok."""
+        """Tự động đóng tất cả các loại popup/thông báo cản trở của TikTok Studio."""
         popup_selectors = [
             'button:has-text("Got it")',
             'button:has-text("Đã hiểu")',
@@ -121,27 +161,80 @@ class TikTokUploader:
             'button:has-text("Để sau")',
             'button:has-text("OK")',
             'button:has-text("Bỏ qua")',
+            'button:has-text("Skip")',
+            'button:has-text("Tiếp tục đăng")',
+            'button:has-text("Post anyway")',
             'div[aria-label="Close"]',
-            'button[aria-label="Close"]'
+            'button[aria-label="Close"]',
+            '.close-btn',
+            'svg.close-icon'
         ]
         for sel in popup_selectors:
             try:
                 btn = target_scope.locator(sel).first
                 if btn.count() > 0 and btn.is_visible():
-                    btn.click()
+                    btn.click(timeout=1000)
+                    time.sleep(0.4)
+            except Exception:
+                pass
+
+    def apply_advanced_settings(self, scope, privacy="public", allow_comment=True, 
+                                allow_duet=True, allow_stitch=True, ai_content=False):
+        """Áp dụng các cấu hình nâng cao: Quyền riêng tư, Tương tác, Gán nhãn AI 2026."""
+        # 1. Tùy chỉnh Quyền riêng tư (Privacy)
+        try:
+            if privacy in ["friends", "private"]:
+                privacy_dropdown = scope.locator('div[role="combobox"]:has-text("Public"), div:has-text("Who can watch this video")').first
+                if privacy_dropdown.count() > 0:
+                    privacy_dropdown.click()
                     time.sleep(0.5)
+                    target_txt = "Friends" if privacy == "friends" else "Private"
+                    opt = scope.locator(f'div[role="option"]:has-text("{target_txt}"), li:has-text("{target_txt}")').first
+                    if opt.count() > 0:
+                        opt.click()
+                        self.log(f"Đã đặt quyền riêng tư: {privacy.upper()}", "INFO")
+        except Exception:
+            pass
+
+        # 2. Cài đặt Tương tác (Allow Comments, Duet, Stitch)
+        try:
+            interaction_configs = [
+                ("Comment", allow_comment),
+                ("Duet", allow_duet),
+                ("Stitch", allow_stitch)
+            ]
+            for name, enabled in interaction_configs:
+                checkbox = scope.locator(f'input[type="checkbox"][name*="{name.lower()}"], div:has-text("{name}") input[type="checkbox"]').first
+                if checkbox.count() > 0:
+                    is_checked = checkbox.is_checked()
+                    if enabled and not is_checked:
+                        checkbox.click()
+                    elif not enabled and is_checked:
+                        checkbox.click()
+        except Exception:
+            pass
+
+        # 3. Gán nhãn nội dung AI (AI-Generated content)
+        if ai_content:
+            try:
+                ai_switch = scope.locator('input[type="checkbox"][name*="ai"], div:has-text("AI-generated content") input, div:has-text("Nội dung do AI tạo") input').first
+                if ai_switch.count() > 0 and not ai_switch.is_checked():
+                    ai_switch.click()
+                    self.log("Đã bật nhãn 'Nội dung do AI tạo' theo chính sách TikTok 2026.", "INFO")
             except Exception:
                 pass
 
     def upload_video(self, account_name, video_path, caption="", hashtags="", headless=False, 
-                     proxy_str=None, anti_reup=True, schedule_minutes=0):
+                     proxy_str=None, anti_reup=True, deep_anti_reup=True, schedule_minutes=0,
+                     privacy="public", allow_comment=True, allow_duet=True, allow_stitch=True,
+                     ai_content=False):
         """
-        Tự động đăng một video lên TikTok Studio.
-        Hỗ trợ:
-        - Lách bản quyền đổi mã Hash MD5 siêu tốc
-        - Hẹn giờ lên lịch đăng
-        - Proxy độc lập
-        - Ghi log lịch sử chi tiết
+        Tự động đăng một video lên TikTok Studio với đầy đủ tính năng:
+        - Lách bản quyền đổi mã Hash MD5 & EXIF Camera giả lập
+        - Hẹn giờ lên lịch đăng linh hoạt
+        - Gán nhãn nội dung AI chuẩn TikTok 2026
+        - Cài đặt quyền riêng tư & tương tác
+        - Proxy độc lập cho từng nick
         """
         profile_path = get_profile_path(account_name)
         if not os.path.exists(video_path):
@@ -155,12 +248,12 @@ class TikTokUploader:
 
         # 1. Xử lý Lách bản quyền Anti-Reup
         if anti_reup:
-            self.log(f"[{account_name}] 🛡️ Đang xử lý lách bản quyền & đổi mã Hash MD5...", "INFO")
-            clean_path, old_h, new_h = anti_reup_process(video_path)
+            self.log(f"[{account_name}] 🛡️ Đang xử lý lách bản quyền & đổi MD5/Metadata...", "INFO")
+            clean_path, old_h, new_h = anti_reup_process(video_path, deep_mode=deep_anti_reup)
             if clean_path != video_path:
                 actual_upload_path = clean_path
                 is_temp_file = True
-                self.log(f"[{account_name}] MD5 cũ: {old_h} -> MD5 mới: {new_h} (Khác 100%, video gốc nguyên vẹn)", "SUCCESS")
+                self.log(f"[{account_name}] MD5 cũ: {old_h} -> MD5 mới: {new_h} (Video gốc nguyên nét)", "SUCCESS")
 
         file_size_mb = os.path.getsize(actual_upload_path) / (1024 * 1024)
         self.log(f"[{account_name}] Bắt đầu xử lý: '{original_file_name}' ({file_size_mb:.2f} MB)", "INFO")
@@ -206,7 +299,7 @@ class TikTokUploader:
                         cleanup_temp_anti_reup(actual_upload_path)
                     return False
 
-                # Đóng các popup
+                # Đóng các popup ban đầu
                 self.dismiss_popups(page, page)
 
                 # Tìm phần tử input file video
@@ -254,7 +347,7 @@ class TikTokUploader:
 
                 # Chờ video upload xong
                 upload_complete = False
-                for wait_i in range(120):
+                for _ in range(120):
                     time.sleep(2)
                     self.dismiss_popups(page, scope)
 
@@ -296,7 +389,7 @@ class TikTokUploader:
                             page.keyboard.press("Control+A")
                             page.keyboard.press("Backspace")
                             time.sleep(0.3)
-                            target_box.type(full_caption, delay=30)
+                            target_box.type(full_caption, delay=25)
                             caption_filled = True
                             self.log(f"[{account_name}] Đã điền Caption thành công.", "SUCCESS")
                             break
@@ -306,23 +399,28 @@ class TikTokUploader:
                 if not caption_filled:
                     self.log(f"[{account_name}] Không tìm thấy ô Caption, bỏ qua gõ tiêu đề.", "WARNING")
 
-                time.sleep(2)
+                time.sleep(1.5)
 
                 # Bật tải lên chất lượng cao
                 try:
-                    hq_switch = scope.locator('input[type="checkbox"][name*="quality"], div:has-text("Allow high-quality uploads")')
+                    hq_switch = scope.locator('input[type="checkbox"][name*="quality"], div:has-text("Allow high-quality uploads") input')
                     if hq_switch.count() > 0 and not hq_switch.first.is_checked():
                         hq_switch.first.click()
                         self.log(f"[{account_name}] Đã bật chế độ tải lên chất lượng cao.", "INFO")
                 except Exception:
                     pass
 
+                # Áp dụng cấu hình nâng cao (Quyền riêng tư, Tương tác, AI label)
+                self.apply_advanced_settings(scope, privacy=privacy, allow_comment=allow_comment,
+                                            allow_duet=allow_duet, allow_stitch=allow_stitch, 
+                                            ai_content=ai_content)
+
                 # Xử lý Lên lịch đăng (Schedule) nếu có
                 post_mode_name = "Đăng ngay"
                 if schedule_minutes > 0:
                     try:
                         self.log(f"[{account_name}] ⏰ Đang thiết lập lên lịch hẹn giờ (+{schedule_minutes} phút)...", "INFO")
-                        sched_switch = scope.locator('input[type="checkbox"][name*="schedule"], input[value="schedule"], div:has-text("Schedule video"), div:has-text("Lên lịch")')
+                        sched_switch = scope.locator('input[type="checkbox"][name*="schedule"], input[value="schedule"], div:has-text("Schedule video") input, div:has-text("Lên lịch") input')
                         if sched_switch.count() > 0:
                             if not sched_switch.first.is_checked():
                                 sched_switch.first.click()
@@ -372,7 +470,7 @@ class TikTokUploader:
                     return False
 
                 # Chờ nút Đăng sẵn sàng
-                for wait_b in range(30):
+                for _ in range(30):
                     if post_button.is_enabled():
                         break
                     time.sleep(1)

@@ -8,16 +8,27 @@ DEFAULT_CONFIG = {
     "accounts": [],
     "account_proxies": {},  # {acc_name: "ip:port:user:pass"}
     "video_folder": "",
-    "caption_mode": "filename",  # "filename", "txt_file", "custom"
+    "caption_mode": "filename",  # "filename", "txt_file", "custom", "spintax"
     "dist_mode": "round_robin",  # "round_robin", "all_to_all"
     "custom_caption": "",
+    "spintax_caption": "{Review|Trải nghiệm|Mở hộp} {sản phẩm|món đồ} cực đỉnh {này|nhé cả nhà}!",
+    "enable_spintax": False,
     "hashtags": "#fyp #xuhuong #trending",
     "delay_seconds": 30,
     "headless": False,
     "auto_move_done": True,
-    "anti_reup_enabled": True,  # Lách bản quyền đổi mã Hash MD5
-    "schedule_mode": False,     # Lên lịch hẹn giờ đăng
-    "privacy": "public"         # "public", "friends", "private"
+    "anti_reup_enabled": True,      # Lách bản quyền đổi mã Hash MD5
+    "deep_anti_reup": True,         # Xóa metadata cũ, tạo metadata camera mới
+    "schedule_mode": False,         # Lên lịch hẹn giờ đăng
+    "schedule_start_minutes": 30,   # Video đầu tiên hẹn sau bao nhiêu phút
+    "schedule_interval_minutes": 45,# Khoảng cách giữa các video hẹn giờ (phút)
+    "privacy": "public",            # "public", "friends", "private"
+    "allow_comment": True,
+    "allow_duet": True,
+    "allow_stitch": True,
+    "ai_content_label": False,      # Gán nhãn nội dung AI theo chuẩn TikTok 2026
+    "sound_alert": True,            # Chuông báo khi hoàn thành
+    "prevent_duplicate": True       # Chống đăng trùng lặp theo lịch sử
 }
 
 def load_config():

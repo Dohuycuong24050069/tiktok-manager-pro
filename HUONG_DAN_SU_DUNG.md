@@ -1,41 +1,56 @@
-# 🎬 HƯỚNG DẪN SỬ DỤNG TIKTOK MANAGER PRO v3.0
+# 🎬 HƯỚNG DẪN SỬ DỤNG TIKTOK MANAGER PRO v4.5 ULTRA
 
-Ứng dụng **TikTok Manager Pro v3.0** là bộ công cụ hoàn chỉnh để quản lý hệ thống tài khoản TikTok, hỗ trợ lách bản quyền video, gán Proxy riêng, lên lịch đăng và theo dõi lịch sử chuyên nghiệp.
+Ứng dụng **TikTok Manager Pro v4.5 Ultra** là bộ công cụ tối thượng all-in-one:
+1. **Quản lý đa tài khoản & Proxy độc lập** cho từng nick.
+2. **Cào hàng loạt video của kênh người khác:** Không dính logo watermark TikTok, chuẩn gốc Full HD 1080p, đầy đủ âm thanh.
+3. **Lách bản quyền video Deep Anti-Reup:** Đổi mã hash MD5/SHA256, tiêm giả lập chữ ký camera iPhone 16 Pro/S24 Ultra.
+4. **Bộ tạo Caption Spintax AI & Hashtags:** Tự động tạo biến thể tiêu đề tránh trùng lặp khi đăng đa kênh.
+5. **Lên lịch đăng giờ vàng TikTok Studio:** Tự động giãn cách thời gian phát hành video.
+6. **Báo cáo lịch sử & Xuất file Excel/CSV.**
 
 ---
 
 ## 🚀 1. Khởi Động Ứng Dụng
 
-- **Cách 1 (Nhanh nhất):** Nhấp đúp vào biểu tượng shortcut ngoài màn hình **Desktop**: **`TikTok Manager Pro`**.
-- **Cách 2:** Mở thư mục `C:\Users\Admin\.gemini\antigravity\scratch\TikTokManagerApp` và nhấp đúp file **`run_app.bat`**.
+- **Cách 1:** Nhấp đúp vào biểu tượng shortcut ngoài màn hình **Desktop**: **`TikTok Manager Pro`**.
+- **Cách 2:** Nhấp đúp vào file **`run_app.bat`** trong thư mục mã nguồn.
 
 ---
 
-## 🌟 2. Các Tính Năng Cao Cấp Mới Được Nâng Cấp
+## 🌟 2. Hướng Dẫn Sử Dụng Chi Tiết Từng Phân Hệ
 
-### 🛡️ Tính Năng Lách Bản Quyền Siêu Tốc (Anti-Reup MD5)
-- Công tắc: **`🛡️ Lách bản quyền (Đổi MD5)`** (mặc định đã bật sẵn).
-- **Cơ chế:** Khi bạn tải video từ nguồn khác về, tool sẽ tự động chèn khối metadata nhị phân an toàn và cập nhật timestamp mới.
-- **Kết quả:** Mã băm MD5/SHA256 của file thay đổi **100% khác biệt**, giúp qua mặt thuật toán quét video trùng lặp của TikTok mà **giữ nguyên 100% độ nét, không làm giảm chất lượng hình ảnh/âm thanh**.
-
-### ⏰ Lên Lịch Đăng Hẹn Giờ (Schedule Post)
-- Công tắc: **`⏰ Hẹn giờ đăng (TikTok Studio)`**.
-- Thay vì đăng dồn dập cùng lúc, tool sẽ tự động kích hoạt tính năng lên lịch hẹn giờ của TikTok Studio để video tự động phát hành vào các khung giờ vàng.
-
-### 📊 Bảng Quản Lý & Xuất Lịch Sử Đăng (History Dashboard)
-- Bấm nút **`📊 Xem Lịch Sử Đăng`** ở cột bên trái.
-- Hiển thị đầy đủ: Thời gian, Nick nào đăng, Tên video, Proxy đã dùng, Trạng thái (Thành công / Thất bại).
-- Nút **`📥 Xuất File Excel / CSV`** giúp bạn lưu báo cáo để theo dõi doanh thu affiliate / view của dàn kênh.
-
-### 🌐 Hệ Thống Gán Proxy Riêng
-- Chọn tài khoản $\rightarrow$ Bấm nút tím **`🌐 Gán Proxy Cho Nick`**.
-- Hỗ trợ định dạng: `ip:port`, `ip:port:user:pass`, `socks5://...`.
-- Tích hợp nút **`⚡ Kiểm Tra Proxy`** để kiểm tra IP thực tế trước khi chạy.
+### 📥 Phân Hệ 1: Cào Video Kênh Người Khác (No Logo - Full HD 1080p)
+* Vào Tab **`📥 Cào Kênh & Tải Video (No Logo)`**.
+* **Nhập đường dẫn:** 
+  * Dán link kênh (ví dụ: `https://www.tiktok.com/@username` hoặc `@username`) để cào toàn bộ video của kênh đó.
+  * Hoặc dán link 1 video cụ thể (hỗ trợ cả link rút gọn `vt.tiktok.com`, `tiktok.com/t/`) để tải riêng video đó.
+* **Số lượng:** Chọn số video tối đa muốn cào (5, 10, 20, 50, 100 video...).
+* **Lưu tiêu đề:** Tool sẽ tự động trích xuất caption tiêu đề gốc ra file `.txt` tương ứng.
+* Bấm nút **`🚀 BẮT ĐẦU CÀO VIDEO`**:
+  * Tool tự động lấy luồng CDN gốc của TikTok $\rightarrow$ **SẠCH 100% LOGO TIKTOK, ĐỦ TIẾNG, ĐỘ PHÂN GIẢI CAO NHẤT (1080P/720P)**.
+  * Tự động nạp các video vừa cào vào Hàng Đợi để bạn sẵn sàng chuyển sang bước Đăng tự động!
 
 ---
 
-## 🛠 3. Quy Trình Sử Dụng 3 Bước
+### 🛡️ Phân Hệ 2: Lách Bản Quyền & Chống Trùng Lặp 2026
+* Vào Tab **`🛡️ Lách Bản Quyền & Cài Đặt 2026`**.
+* **Deep Anti-Reup:** Đổi mã băm MD5/SHA256, tiêm thông tin camera giả lập và thời gian ngẫu nhiên.
+* **Quyền riêng tư:** Chọn Công khai (Public), Bạn bè (Friends) hoặc Riêng tư (Private).
+* **Tương tác:** Cho phép/chặn Bình luận, Duet, Stitch.
+* **Gán nhãn AI:** Tự động kích hoạt nhãn *"Nội dung do AI tạo"* chuẩn TikTok 2026.
+* **Lên lịch thông minh:** Hẹn giờ video đầu sau 30 phút, mỗi video cách nhau 45 phút.
 
-1. **Bước 1 (Nick TikTok):** Nhập tên nick $\rightarrow$ bấm `+ Thêm` $\rightarrow$ (nếu có proxy thì gán) $\rightarrow$ bấm `🔑 Đăng nhập Chrome` 1 lần duy nhất $\rightarrow$ đóng cửa sổ Chrome lại.
-2. **Bước 2 (Video):** Bấm `📁 Chọn Thư Mục Video` chứa các video cần đăng.
-3. **Bước 3 (Bắt đầu):** Bấm nút xanh lớn **`▶ BẮT ĐẦU ĐĂNG TỰ ĐỘNG`** và ngồi chờ chuông báo hoàn thành!
+---
+
+### 👥 Phân Hệ 3: Quản Lý Đa Tài Khoản & Gán Proxy
+* Vào Tab **`👥 Quản Lý Tài Khoản & Proxy`**.
+* Nhập tên Nick mới và bấm **Thêm Nick**.
+* Bấm **Cài Proxy** để gán proxy riêng cho từng nick (hỗ trợ `IP:Port` hoặc `IP:Port:User:Pass`).
+* Bấm **Đăng Nhập Chrome** để mở trình duyệt, đăng nhập thủ công 1 lần duy nhất — tool sẽ lưu phiên vĩnh viễn.
+
+---
+
+### 🚀 Phân Hệ 4: Đăng Video Tự Động Đa Kênh
+* Chọn các nick muốn đăng ở thanh Sidebar bên trái.
+* Chọn thư mục chứa video và tích chọn các video cần đăng.
+* Bấm **🚀 BẮT ĐẦU ĐĂNG TỰ ĐỘNG**. Tool sẽ tự động đăng, áp dụng Anti-Reup, caption spintax và hẹn giờ phát hành.
