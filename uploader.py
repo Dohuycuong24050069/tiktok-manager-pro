@@ -91,6 +91,7 @@ class TikTokUploader:
                     user_data_dir=profile_path,
                     proxy=playwright_proxy,
                     headless=True,
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
                     args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
                     locale="vi-VN"
                 )
@@ -124,6 +125,7 @@ class TikTokUploader:
                     user_data_dir=profile_path,
                     proxy=playwright_proxy,
                     headless=False,
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
                     args=[
                         "--disable-blink-features=AutomationControlled",
                         "--no-sandbox",
@@ -272,6 +274,7 @@ class TikTokUploader:
                     user_data_dir=profile_path,
                     proxy=playwright_proxy,
                     headless=headless,
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
                     args=[
                         "--disable-blink-features=AutomationControlled",
                         "--no-sandbox",
