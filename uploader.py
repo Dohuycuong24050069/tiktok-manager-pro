@@ -97,6 +97,7 @@ class TikTokUploader:
                     user_data_dir=profile_path,
                     proxy=playwright_proxy,
                     headless=True,
+                    channel="chrome",
                     user_agent=dev_info.get("user_agent"),
                     args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
                     locale="vi-VN"
@@ -145,6 +146,7 @@ class TikTokUploader:
                     user_data_dir=profile_path,
                     proxy=playwright_proxy,
                     headless=False,
+                    channel="chrome",
                     user_agent=dev_info.get("user_agent"),
                     args=[
                         "--disable-blink-features=AutomationControlled",
@@ -297,6 +299,7 @@ class TikTokUploader:
                     user_data_dir=profile_path,
                     proxy=playwright_proxy,
                     headless=headless,
+                    channel="chrome",
                     user_agent=dev_info.get("user_agent"),
                     args=[
                         "--disable-blink-features=AutomationControlled",
