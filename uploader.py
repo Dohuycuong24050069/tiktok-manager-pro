@@ -7,6 +7,11 @@ from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeo
 from config_manager import get_profile_path, parse_proxy
 from video_processor import anti_reup_process, cleanup_temp_anti_reup
 from history_manager import add_history_record
+from device_manager import (
+    get_or_create_device_profile,
+    generate_device_stealth_js,
+    log_account_activity
+)
 
 STEALTH_JS = """
 // Ẩn hoàn toàn dấu vết tự động hóa
@@ -84,6 +89,7 @@ class TikTokUploader:
         if not os.path.exists(profile_path):
             return False, "Chưa tạo Profile"
 
+        dev_info = get_or_create_device_profile(account_name)
         playwright_proxy = parse_proxy(proxy_str)
         try:
             with sync_playwright() as p:
@@ -91,33 +97,47 @@ class TikTokUploader:
                     user_data_dir=profile_path,
                     proxy=playwright_proxy,
                     headless=True,
-                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+                    user_agent=dev_info.get("user_agent"),
                     args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
                     locale="vi-VN"
                 )
                 page = context.pages[0] if context.pages else context.new_page()
-                page.add_init_script(STEALTH_JS)
+                page.add_init_script(STEALTH_JS + generate_device_stealth_js(dev_info))
                 page.goto("https://www.tiktok.com/tiktokstudio/upload", timeout=30000)
                 page.wait_for_load_state("domcontentloaded")
                 time.sleep(2)
                 url = page.url.lower()
                 context.close()
                 if "login" in url:
+                    log_account_activity(account_name, "Kiểm tra phiên", ip_or_proxy=proxy_str, status="Hết phiên", details="Cần đăng nhập lại Chrome")
                     return False, "Hết phiên / Chưa đăng nhập"
+                log_account_activity(account_name, "Kiểm tra phiên", ip_or_proxy=proxy_str, status="Sống 100%", details="Phiên TikTok Studio hoạt động tốt")
                 return True, "Đang đăng nhập (Sống 100%)"
         except Exception as e:
+            log_account_activity(account_name, "Kiểm tra phiên", ip_or_proxy=proxy_str, status="Lỗi", details=str(e)[:50])
             return False, f"Lỗi kiểm tra: {str(e)[:40]}"
 
     def launch_login_browser(self, account_name, proxy_str=None):
         """Mở trình duyệt Chrome với profile và proxy riêng để đăng nhập nick TikTok."""
         profile_path = get_profile_path(account_name)
         os.makedirs(profile_path, exist_ok=True)
+        dev_info = get_or_create_device_profile(account_name)
+
         self.log(f"Đang mở Chrome cho nick: '{account_name}'...", "INFO")
+        self.log(f"📱 Thiết bị giả lập: {dev_info.get('name')}", "INFO")
         self.log(f"Thư mục Profile: {profile_path}", "INFO")
 
         playwright_proxy = parse_proxy(proxy_str)
         if playwright_proxy:
             self.log(f"[{account_name}] Đang sử dụng Proxy: {playwright_proxy.get('server')}", "INFO")
+
+        log_account_activity(
+            account_name, 
+            "Mở Chrome đăng nhập", 
+            ip_or_proxy=proxy_str or "IP Mạng Thật", 
+            status="Đang mở", 
+            details=f"Thiết bị: {dev_info.get('name')}"
+        )
 
         with sync_playwright() as p:
             try:
@@ -125,7 +145,7 @@ class TikTokUploader:
                     user_data_dir=profile_path,
                     proxy=playwright_proxy,
                     headless=False,
-                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+                    user_agent=dev_info.get("user_agent"),
                     args=[
                         "--disable-blink-features=AutomationControlled",
                         "--no-sandbox",
@@ -136,7 +156,7 @@ class TikTokUploader:
                     locale="vi-VN"
                 )
                 page = context.pages[0] if context.pages else context.new_page()
-                page.add_init_script(STEALTH_JS)
+                page.add_init_script(STEALTH_JS + generate_device_stealth_js(dev_info))
 
                 self.log("Đang tải trang TikTok Studio Upload...", "INFO")
                 page.goto("https://www.tiktok.com/tiktokstudio/upload", timeout=60000)
@@ -148,9 +168,11 @@ class TikTokUploader:
                 while len(context.pages) > 0:
                     time.sleep(1)
                 context.close()
+                log_account_activity(account_name, "Đóng Chrome", ip_or_proxy=proxy_str or "IP Mạng Thật", status="Thành công", details="Đã lưu phiên Profile")
                 self.log(f"Đã lưu thành công phiên đăng nhập cho nick: '{account_name}'.", "SUCCESS")
                 return True
             except Exception as e:
+                log_account_activity(account_name, "Lỗi mở Chrome", ip_or_proxy=proxy_str or "IP Mạng Thật", status="Lỗi", details=str(e)[:50])
                 self.log(f"Lỗi khi mở trình duyệt: {str(e)}", "ERROR")
                 return False
 
@@ -267,6 +289,7 @@ class TikTokUploader:
         full_caption = sanitize_caption(f"{caption} {hashtags}".strip())
         self.log(f"[{account_name}] Caption: {full_caption}", "INFO")
 
+        dev_info = get_or_create_device_profile(account_name)
         with sync_playwright() as p:
             context = None
             try:
@@ -274,19 +297,19 @@ class TikTokUploader:
                     user_data_dir=profile_path,
                     proxy=playwright_proxy,
                     headless=headless,
-                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+                    user_agent=dev_info.get("user_agent"),
                     args=[
                         "--disable-blink-features=AutomationControlled",
                         "--no-sandbox",
                         "--disable-infobars",
                         "--start-maximized"
                     ],
-                    viewport={"width": 1366, "height": 850} if headless else None,
+                    viewport={"width": dev_info.get("screen_width", 1366), "height": dev_info.get("screen_height", 850)} if headless else None,
                     locale="vi-VN"
                 )
 
                 page = context.pages[0] if context.pages else context.new_page()
-                page.add_init_script(STEALTH_JS)
+                page.add_init_script(STEALTH_JS + generate_device_stealth_js(dev_info))
 
                 self.log(f"[{account_name}] Đang kết nối tới TikTok Studio...", "INFO")
                 page.goto("https://www.tiktok.com/tiktokstudio/upload", timeout=65000)
@@ -505,9 +528,11 @@ class TikTokUploader:
                 if posted_success:
                     self.log(f"[{account_name}] 🎉 XÁC NHẬN THÀNH CÔNG: Video '{original_file_name}' đã được xử lý xong!", "SUCCESS")
                     add_history_record(account_name, original_file_name, full_caption, "Thành công", proxy_str, post_mode_name)
+                    log_account_activity(account_name, "Đăng video thành công", ip_or_proxy=proxy_str, status="Thành công", details=f"File: {original_file_name}")
                 else:
                     self.log(f"[{account_name}] Đã gửi yêu cầu đăng cho video '{original_file_name}'.", "SUCCESS")
                     add_history_record(account_name, original_file_name, full_caption, "Đã gửi lệnh đăng", proxy_str, post_mode_name)
+                    log_account_activity(account_name, "Gửi lệnh đăng video", ip_or_proxy=proxy_str, status="Đã gửi", details=f"File: {original_file_name}")
                     posted_success = True
 
                 time.sleep(3)
@@ -522,6 +547,7 @@ class TikTokUploader:
             except Exception as e:
                 self.log(f"[{account_name}] Lỗi trong tiến trình upload: {str(e)}", "ERROR")
                 add_history_record(account_name, original_file_name, full_caption, f"Lỗi: {str(e)[:50]}", proxy_str, post_mode_name)
+                log_account_activity(account_name, "Đăng video thất bại", ip_or_proxy=proxy_str, status="Thất bại", details=f"File: {original_file_name} - {str(e)[:50]}")
                 if context:
                     try:
                         context.close()

@@ -14,6 +14,12 @@ from uploader import TikTokUploader, move_to_done_folder, check_proxy_alive
 from history_manager import load_history, clear_all_history, export_history_to_csv, is_video_uploaded_to_account
 from video_processor import parse_spintax
 from tiktok_scraper import TikTokScraper
+from device_manager import (
+    get_or_create_device_profile,
+    regenerate_device_profile,
+    get_account_activities,
+    clear_account_activities
+)
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
@@ -179,6 +185,165 @@ class BulkAccountDialog(ctk.CTkToplevel):
         if self.on_import_callback:
             self.on_import_callback(imported_accs)
         self.destroy()
+
+# ==========================================
+# DIALOG: QUẢN LÝ THIẾT BỊ GIẢ LẬP & NHẬT KÝ NICK
+# ==========================================
+class AccountDeviceAndLogDialog(ctk.CTkToplevel):
+    def __init__(self, parent, account_name, on_change_callback=None):
+        super().__init__(parent)
+        self.title(f"📱 Fake Device & Nhật Ký Hoạt Động - {account_name}")
+        self.geometry("780x640")
+        self.minsize(700, 520)
+        self.account_name = account_name
+        self.on_change_callback = on_change_callback
+
+        self.transient(parent)
+        self.grab_set()
+
+        self.device_info = get_or_create_device_profile(account_name)
+
+        # Header Title
+        h_f = ctk.CTkFrame(self, fg_color="transparent")
+        h_f.pack(fill="x", padx=20, pady=(15, 6))
+        ctk.CTkLabel(
+            h_f, 
+            text=f"📱 THIẾT BỊ GIẢ LẬP & NHẬT KÝ HOẠT ĐỘNG: {account_name.upper()}", 
+            font=ctk.CTkFont(size=15, weight="bold"),
+            text_color="#1abc9c"
+        ).pack(side="left")
+
+        # Tabview
+        self.tabview = ctk.CTkTabview(self)
+        self.tabview.pack(fill="both", expand=True, padx=20, pady=(0, 15))
+
+        self.tab_device = self.tabview.add("📱 Thiết Bị Giả Lập (Fingerprint)")
+        self.tab_log = self.tabview.add("📜 Nhật Ký Hoạt Động (Account Log)")
+
+        self.build_device_tab()
+        self.build_log_tab()
+
+    def build_device_tab(self):
+        dev = self.device_info
+        scroll_d = ctk.CTkScrollableFrame(self.tab_device)
+        scroll_d.pack(fill="both", expand=True, padx=5, pady=5)
+
+        # Info Box
+        info_c = ctk.CTkFrame(scroll_d, fg_color="#1e272e")
+        info_c.pack(fill="x", pady=6, padx=10)
+
+        ctk.CTkLabel(
+            info_c, 
+            text="🛡️ CƠ CHẾ BẢO VỆ CHỐNG QUÉT MULTI-ACCOUNT TIKTOK", 
+            font=ctk.CTkFont(size=13, weight="bold"), 
+            text_color="#f1c40f"
+        ).pack(anchor="w", padx=15, pady=(10, 4))
+
+        ctk.CTkLabel(
+            info_c,
+            text="• Mỗi tài khoản được cấp một thông số phần cứng riêng biệt và CỐ ĐỊNH vĩnh viễn.\n• Fake toàn diện: GPU WebGL, CPU Cores, RAM, Màn hình, Canvas vi nhiễu, Audio vi nhiễu.\n• TikTok sẽ nhận diện đây là một máy tính độc lập duy nhất từ trước đến nay!",
+            font=ctk.CTkFont(size=11),
+            text_color="#c8d6e5",
+            justify="left"
+        ).pack(anchor="w", padx=15, pady=(0, 10))
+
+        # Specs Card
+        specs_card = ctk.CTkFrame(scroll_d)
+        specs_card.pack(fill="x", pady=6, padx=10)
+
+        self.lbl_dev_name = ctk.CTkLabel(specs_card, text=f"Thiết bị: {dev.get('name')}", font=ctk.CTkFont(size=13, weight="bold"), text_color="#3498db")
+        self.lbl_dev_name.pack(anchor="w", padx=15, pady=(12, 6))
+
+        self.lbl_dev_os = ctk.CTkLabel(specs_card, text=f"• Hệ điều hành: {dev.get('os')} ({dev.get('platform')})", font=ctk.CTkFont(size=11))
+        self.lbl_dev_os.pack(anchor="w", padx=15, pady=2)
+
+        self.lbl_dev_cpu = ctk.CTkLabel(specs_card, text=f"• CPU & RAM: {dev.get('cpu_cores')} Nhân Cores • {dev.get('device_memory_gb')} GB RAM", font=ctk.CTkFont(size=11))
+        self.lbl_dev_cpu.pack(anchor="w", padx=15, pady=2)
+
+        self.lbl_dev_gpu = ctk.CTkLabel(specs_card, text=f"• GPU WebGL: {dev.get('webgl_renderer')}", font=ctk.CTkFont(size=11), wraplength=640, justify="left")
+        self.lbl_dev_gpu.pack(anchor="w", padx=15, pady=2)
+
+        self.lbl_dev_screen = ctk.CTkLabel(specs_card, text=f"• Màn hình giả lập: {dev.get('screen_width')} x {dev.get('screen_height')} ({dev.get('color_depth')}-bit Color)", font=ctk.CTkFont(size=11))
+        self.lbl_dev_screen.pack(anchor="w", padx=15, pady=2)
+
+        self.lbl_dev_canvas = ctk.CTkLabel(specs_card, text=f"• Canvas & Audio Vi Nhiễu: Đang kích hoạt (Seed #{dev.get('canvas_noise_seed', 12345)})", font=ctk.CTkFont(size=11), text_color="#2ecc71")
+        self.lbl_dev_canvas.pack(anchor="w", padx=15, pady=(2, 12))
+
+        # Action Buttons
+        btn_f = ctk.CTkFrame(scroll_d, fg_color="transparent")
+        btn_f.pack(fill="x", pady=10, padx=10)
+
+        ctk.CTkButton(
+            btn_f,
+            text="🎲 Đổi Sang Thiết Bị Khác Ngẫu Nhiên",
+            fg_color="#e67e22",
+            hover_color="#d35400",
+            height=36,
+            command=self.on_regenerate_device
+        ).pack(side="left", padx=5)
+
+    def on_regenerate_device(self):
+        if messagebox.askyesno("Xác nhận", f"Bạn có chắc muốn cấp thiết bị giả lập MỚI cho nick '{self.account_name}'?\n(TikTok sẽ ghi nhận đây là bạn vừa đổi máy tính mới)"):
+            self.device_info = regenerate_device_profile(self.account_name)
+            dev = self.device_info
+            self.lbl_dev_name.configure(text=f"Thiết bị: {dev.get('name')}")
+            self.lbl_dev_os.configure(text=f"• Hệ điều hành: {dev.get('os')} ({dev.get('platform')})")
+            self.lbl_dev_cpu.configure(text=f"• CPU & RAM: {dev.get('cpu_cores')} Nhân Cores • {dev.get('device_memory_gb')} GB RAM")
+            self.lbl_dev_gpu.configure(text=f"• GPU WebGL: {dev.get('webgl_renderer')}")
+            self.lbl_dev_screen.configure(text=f"• Màn hình giả lập: {dev.get('screen_width')} x {dev.get('screen_height')} ({dev.get('color_depth')}-bit Color)")
+            self.lbl_dev_canvas.configure(text=f"• Canvas & Audio Vi Nhiễu: Đang kích hoạt (Seed #{dev.get('canvas_noise_seed', 12345)})")
+            messagebox.showinfo("Thành Công", f"Đã gán thiết bị mới: {dev.get('name')}!")
+            self.refresh_log_list()
+            if self.on_change_callback:
+                self.on_change_callback()
+
+    def build_log_tab(self):
+        # Action bar top of log
+        log_act = ctk.CTkFrame(self.tab_log, fg_color="transparent")
+        log_act.pack(fill="x", pady=(5, 8))
+
+        ctk.CTkButton(log_act, text="🔄 Làm Mới Log", width=120, fg_color="#34495e", command=self.refresh_log_list).pack(side="left", padx=5)
+        ctk.CTkButton(log_act, text="🗑 Xoá Nhật Ký Nick", width=140, fg_color="#c0392b", command=self.on_clear_logs).pack(side="right", padx=5)
+
+        # Log Scroll Frame
+        self.log_scroll = ctk.CTkScrollableFrame(self.tab_log)
+        self.log_scroll.pack(fill="both", expand=True)
+
+        self.refresh_log_list()
+
+    def refresh_log_list(self):
+        for w in self.log_scroll.winfo_children():
+            w.destroy()
+
+        activities = get_account_activities(self.account_name, limit=60)
+        if not activities:
+            ctk.CTkLabel(self.log_scroll, text="Chưa có nhật ký hoạt động nào cho nick này.", text_color="gray").pack(pady=30)
+            return
+
+        for act in activities:
+            card = ctk.CTkFrame(self.log_scroll, fg_color="#2c3e50")
+            card.pack(fill="x", pady=3, padx=5)
+
+            top_r = ctk.CTkFrame(card, fg_color="transparent")
+            top_r.pack(fill="x", padx=10, pady=(6, 2))
+
+            ctk.CTkLabel(top_r, text=act.get("timestamp", ""), font=ctk.CTkFont(size=10), text_color="#bdc3c7").pack(side="left")
+            
+            st = act.get("status", "")
+            st_color = "#2ecc71" if any(w in st.lower() for w in ["thành công", "sống", "đã gửi"]) else ("#e74c3c" if "lỗi" in st.lower() or "thất bại" in st.lower() or "hết phiên" in st.lower() else "#f39c12")
+            ctk.CTkLabel(top_r, text=f"[{st}]", font=ctk.CTkFont(size=11, weight="bold"), text_color=st_color).pack(side="right")
+
+            bot_r = ctk.CTkFrame(card, fg_color="transparent")
+            bot_r.pack(fill="x", padx=10, pady=(0, 6))
+
+            ctk.CTkLabel(bot_r, text=f"👉 {act.get('action')}:", font=ctk.CTkFont(size=11, weight="bold")).pack(side="left", padx=(0, 6))
+            ctk.CTkLabel(bot_r, text=f"IP: {act.get('ip_proxy')} | {act.get('details')}", font=ctk.CTkFont(size=11), text_color="#ecf0f1").pack(side="left")
+
+    def on_clear_logs(self):
+        if messagebox.askyesno("Xác nhận", f"Bạn có chắc muốn xoá toàn bộ nhật ký của nick '{self.account_name}'?"):
+            clear_account_activities(self.account_name)
+            self.refresh_log_list()
+            messagebox.showinfo("Thành Công", "Đã xoá sạch lịch sử log của nick!")
 
 # ==========================================
 # GIAO DIỆN CHÍNH: TIKTOK MANAGER PRO v4.5 ULTRA
@@ -691,10 +856,10 @@ class TikTokManagerApp(ctk.CTk):
         h_frame = ctk.CTkFrame(acc_manage_card, fg_color="#2c3e50")
         h_frame.grid(row=0, column=0, sticky="ew", padx=15, pady=(10, 4))
 
-        ctk.CTkLabel(h_frame, text="Tài Khoản TikTok", width=180, anchor="w", font=ctk.CTkFont(size=11, weight="bold")).pack(side="left", padx=8)
-        ctk.CTkLabel(h_frame, text="Proxy Gán", width=200, anchor="w", font=ctk.CTkFont(size=11, weight="bold")).pack(side="left", padx=8)
-        ctk.CTkLabel(h_frame, text="Trạng Thái Phiên", width=180, anchor="w", font=ctk.CTkFont(size=11, weight="bold")).pack(side="left", padx=8)
-        ctk.CTkLabel(h_frame, text="Hành Động", width=220, anchor="w", font=ctk.CTkFont(size=11, weight="bold")).pack(side="left", padx=8)
+        ctk.CTkLabel(h_frame, text="Tài Khoản TikTok", width=160, anchor="w", font=ctk.CTkFont(size=11, weight="bold")).pack(side="left", padx=6)
+        ctk.CTkLabel(h_frame, text="Proxy Gán", width=150, anchor="w", font=ctk.CTkFont(size=11, weight="bold")).pack(side="left", padx=6)
+        ctk.CTkLabel(h_frame, text="Trạng Thái Phiên", width=150, anchor="w", font=ctk.CTkFont(size=11, weight="bold")).pack(side="left", padx=6)
+        ctk.CTkLabel(h_frame, text="Hành Động & Thiết Bị", width=320, anchor="w", font=ctk.CTkFont(size=11, weight="bold")).pack(side="left", padx=6)
 
         self.acc_manage_scroll = ctk.CTkScrollableFrame(acc_manage_card)
         self.acc_manage_scroll.grid(row=1, column=0, sticky="nsew", padx=15, pady=(0, 10))
@@ -949,30 +1114,34 @@ class TikTokManagerApp(ctk.CTk):
             row.pack(fill="x", pady=4)
 
             # Col 1: Acc Name
-            ctk.CTkLabel(row, text=acc, width=180, anchor="w", font=ctk.CTkFont(size=12, weight="bold")).pack(side="left", padx=8)
+            ctk.CTkLabel(row, text=acc, width=160, anchor="w", font=ctk.CTkFont(size=12, weight="bold")).pack(side="left", padx=6)
 
             # Col 2: Proxy
             prx = proxies.get(acc, "IP Mạng Thật")
-            prx_display = prx[:22] + "..." if len(prx) > 22 else prx
-            ctk.CTkLabel(row, text=prx_display, width=200, anchor="w", font=ctk.CTkFont(size=11), text_color="#9b59b6" if prx != "IP Mạng Thật" else "gray").pack(side="left", padx=8)
+            prx_display = prx[:18] + "..." if len(prx) > 18 else prx
+            ctk.CTkLabel(row, text=prx_display, width=150, anchor="w", font=ctk.CTkFont(size=11), text_color="#9b59b6" if prx != "IP Mạng Thật" else "gray").pack(side="left", padx=6)
 
             # Col 3: Status
             p_path = get_profile_path(acc)
             has_profile = os.path.exists(p_path)
-            status_txt = "Đã lưu Profile" if has_profile else "Profile Mới (Chưa login)"
+            status_txt = "Đã lưu Profile" if has_profile else "Chưa login"
             status_color = "#2ecc71" if has_profile else "#f39c12"
 
-            lbl_st = ctk.CTkLabel(row, text=status_txt, width=180, anchor="w", font=ctk.CTkFont(size=11), text_color=status_color)
-            lbl_st.pack(side="left", padx=8)
+            lbl_st = ctk.CTkLabel(row, text=status_txt, width=150, anchor="w", font=ctk.CTkFont(size=11), text_color=status_color)
+            lbl_st.pack(side="left", padx=6)
             self.account_status_labels[acc] = lbl_st
 
             # Col 4: Action Buttons
             act_f = ctk.CTkFrame(row, fg_color="transparent")
-            act_f.pack(side="left", padx=8)
+            act_f.pack(side="left", padx=6)
 
-            ctk.CTkButton(act_f, text="🔑 Đăng nhập", width=85, height=24, fg_color="#1f538d", command=lambda a=acc: self.login_specific_account(a)).pack(side="left", padx=2)
-            ctk.CTkButton(act_f, text="🌐 Proxy", width=65, height=24, fg_color="#8e44ad", command=lambda a=acc: self.open_proxy_for_account(a)).pack(side="left", padx=2)
-            ctk.CTkButton(act_f, text="🗑 Xoá", width=55, height=24, fg_color="#c0392b", command=lambda a=acc: self.delete_specific_account(a)).pack(side="left", padx=2)
+            ctk.CTkButton(act_f, text="🔑 Đăng nhập", width=80, height=24, fg_color="#1f538d", command=lambda a=acc: self.login_specific_account(a)).pack(side="left", padx=2)
+            ctk.CTkButton(act_f, text="🌐 Proxy", width=58, height=24, fg_color="#8e44ad", command=lambda a=acc: self.open_proxy_for_account(a)).pack(side="left", padx=2)
+            ctk.CTkButton(act_f, text="📱 Thiết Bị & Log", width=110, height=24, fg_color="#16a085", hover_color="#117a65", command=lambda a=acc: self.open_device_and_log_dialog(a)).pack(side="left", padx=2)
+            ctk.CTkButton(act_f, text="🗑 Xoá", width=48, height=24, fg_color="#c0392b", command=lambda a=acc: self.delete_specific_account(a)).pack(side="left", padx=2)
+
+    def open_device_and_log_dialog(self, account_name):
+        AccountDeviceAndLogDialog(self, account_name, on_change_callback=self.render_account_manager_table)
 
     def select_all_accounts(self):
         for var in self.account_vars.values():
