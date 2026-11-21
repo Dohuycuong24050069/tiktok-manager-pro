@@ -160,8 +160,8 @@ class TikTokUploader:
                 page = context.pages[0] if context.pages else context.new_page()
                 page.add_init_script(STEALTH_JS + generate_device_stealth_js(dev_info))
 
-                self.log("Đang mở trang Đăng Nhập TikTok (Chuẩn Web Chính)...", "INFO")
-                page.goto("https://www.tiktok.com/login", timeout=60000)
+                self.log("Đang mở trang chủ TikTok (https://www.tiktok.com)...", "INFO")
+                page.goto("https://www.tiktok.com/", timeout=60000)
 
                 self.log("Trình duyệt đã mở sẵn sàng!", "SUCCESS")
                 self.log(">>> Vui lòng đăng nhập tài khoản TikTok trên cửa sổ Chrome vừa mở.", "SUCCESS")
